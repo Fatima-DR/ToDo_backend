@@ -1,3 +1,4 @@
+/* eslint-disable no-tabs */
 // import express from "express";
 // React apps get Transpiled
 // This version of NodeJS does support import statements and there is no transpilation step
@@ -5,91 +6,106 @@
 const serverlessHttp = require('serverless-http');
 const express = require('express');
 const cors = require('cors');
+const bodyParser = require('body-parser');
+const mysql = require('mysql');
 
+
+const connection = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: 'Tasks',
+});
 // Logically separate 4 sections of code according to the method of the HTTP request received
 
 // Export a single function, called app
 
 const app = express();
-const bodyParser = require('body-parser');
-
 app.use(cors());
-
-
-// https://fjr832ry.api-gateway.aws.com/tasks (backend URL example)
-// https://harrietty.github.com/todos_frontend (frontend URL example)
-app.use(bodyParser.urlencoded({ extended: false }));
+// app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
 
 app.get('/tasks', (request, response) => {
   // Should make a SELECT * FROM Tasks query to the DB and return the results
-  // For now, it's just going to return some dummy data
-
-  // Request has loads of info about the request
-  // Resposne has some useful methods for sending a response
-  response.status(200).send({
-    tasks: [
-      {
-        id: 1,
-        text: 'Wash the dishes',
-      },
-      {
-        id: 2,
-        text: 'Wash the car',
-      },
-    ],
+  connection.query('SELECT * FROM Tasks', (err, data) => {
+    if (err) {
+      console.log('Error from MySQL', err);
+      response.status(500).send(err);
+    } else {
+      response.status(200).send(data);
+    }
   });
 });
 
 app.delete('/tasks/:id', (request, response) => {
   // Should delete the task with the specified ID from the database
-  // For now, just send back a text message (and status 200)
+  // write a querey in SQL
+  // escape id provided by the user
+  // send back 200 status if sucessful
+
   const deletedTaskId = request.params.id;
-
-  let someResponse = {
-    message: `Deleted task, ID:${deletedTaskId}`,
-  };
-  if (deletedTaskId > 4 && deletedTaskId < 1) {
-    someResponse = {
-      message: `task ID: ${deletedTaskId} does not exist`,
-    };
-  }
-
-  response.status(404).send(someResponse);
-
-  // response.status(200).send("Deleted task, ID:" + deletedTaskId);
-  // if (deletedTaskId >= 4 && <= 1){
-  //   response.status(404).send("task ID: " + deletedTaskId + " does not exist");
-  // };
+  connection.query(`DELETE FROM Tasks WHERE TaskID = ${deletedTaskId}`, (err) => {
+    if (err) {
+      console.log('Error from MySQL', err);
+      response.status(500).send(err);
+    } else {
+      response.status(200).send(`Deleted task with ID ${deletedTaskId}!`);
+    }
+  });
 });
 
+/*
+{
+	"Task": "Clean the car",
+	"DueDate": "2020-04-26",
+	"Urgent": true,
+}
+*/
+
 app.post('/tasks', (request, response) => {
-  // Should INSERT INTO the database the new task
-  // For now, just send back a text message (and status 200) "New task saved"
-  const newTask = {
-    tasks: ['Added new Task',
-      {
-        id: 3,
-        text: 'Go to the shops',
-      },
-    ],
-  };
-  response.status(200).send(newTask);
-  //   tasks: [
-  //     {
-  //       id: 1,
-  //       text: 'Go to the shops',
-  //     },
-  //   ],
-  // });
+  const data = request.body;
+
+  const query = 'INSERT INTO Tasks (Task, Urgent, DueDate, Completed) VALUES (?, ?, ?, ?)';
+
+  connection.query(query, [data.Task, data.Urgent, data.DueDate, false], (err, results) => {
+    if (err) {
+      console.log('Error from MySQL', err);
+      response.status(500).send(err);
+    } else {
+      connection.query(`SELECT * FROM Tasks WHERE TaskID = ${results.insertId}`, (errs, resultss) => {
+        if (err) {
+          console.log('Error from MySQL', errs);
+          response.status(500).send(errs);
+        } else {
+          response.status(201).send(resultss[0]);
+        }
+      });
+    }
+  });
 });
 
 app.put('/tasks/:id', (request, response) => {
-  // Should UPDATE a task in the DB
-  // For now, just send back a text message (and status 200)
+  // write sql query to update fields provided in request where task id is equal to task provided
+  // remember to escape user provided values
+  // send back 200 (not updated task)
+
   const createdTaskId = request.params.id;
 
-  response.status(200).send(`You issued a put request for ID: 1${createdTaskId}`);
+  const data = request.body;
+
+  const query = `UPDATE Tasks SET TaskID = (?) WHERE TaskID = ${createdTaskId}`;
+
+  connection.query(query, [data.TaskID], (err, results) => {
+    if (err) {
+      console.log('Error from MySQL', err);
+      response.status(500).send(err);
+    } else {
+      connection.query(`UPDATE Tasks SET TaskID = ${results.insertId} WHERE TaskID = ${createdTaskId}`);
+      response.status(201).send(`You successfully issued a put request for ID: ${createdTaskId} `);
+    }
+  });
 });
+
 
 module.exports.app = serverlessHttp(app);

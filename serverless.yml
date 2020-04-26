@@ -10,20 +10,24 @@ provider:
 functions:
   tasks:
     handler: handler.app # handler - name of file, app = named export
+    environment:
+      DB_HOST: ${opt:DB_HOST}
+      DB_USER: ${opt:DB_USER}
+      DB_PASSWORD: ${opt:DB_PASSWORD}
     events:
       - http:
           path: /tasks
-          method: get
+          method: GET
           cors: true # Cross Origin Resource Sharing
       - http:
-          path: /tasks/{id} # id is a path parameter
-          method: put
+          path: /tasks/{id} # id is a Path Parameter
+          method: PUT
           cors: true
       - http:
           path: /tasks
-          method: post
+          method: POST
           cors: true
       - http:
           path: /tasks/{id}
-          method: delete
+          method: DELETE
           cors: true
