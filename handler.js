@@ -94,13 +94,14 @@ app.put('/tasks/:id', (request, response) => {
 
   const data = request.body;
 
-  const query = 'UPDATE Tasks SET ? WHERE TaskId = ?';
+  const query = `UPDATE Tasks SET Completed = (?) WHERE TaskID = ${createdTaskId}`;
 
-  connection.query(query, [data, createdTaskId], (err) => {
+  connection.query(query, [data.Completed], (err, results) => {
     if (err) {
       console.log('Error from MySQL', err);
       response.status(500).send(err);
     } else {
+      connection.query(`UPDATE Tasks SET Completed = ${results.insertCompleted} WHERE TaskID = ${createdTaskId}`);
       response.status(201).send(`You successfully issued a put request for ID: ${createdTaskId} `);
     }
   });
