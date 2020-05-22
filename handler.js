@@ -50,7 +50,7 @@ app.delete('/tasks/:id', (request, response) => {
       console.log('Error from MySQL', err);
       response.status(500).send(err);
     } else {
-      response.status(200).send(`Deleted task with ID ${deletedTaskId}!`);
+      response.status(200).json({message:`Deleted task with ID ${deletedTaskId}!`});
     }
   });
 });
